@@ -19,6 +19,11 @@ fn main() -> anyhow::Result<()> {
                 let request = HttpRequest::new(&line).context("parse HTTP request")?;
                 match &request.path[..] {
                     "/" => respond_with_200_ok(&mut stream)?,
+                    s if s.starts_with("/echo/") => {
+                        let random_string = &s["/echo/".len()..];
+                        respond_with_text_content(&mut stream, random_string)
+                            .context("echo with input string")?;
+                    }
                     _ => respond_with_404_not_found(&mut stream)?,
                 }
             }
@@ -34,6 +39,15 @@ fn main() -> anyhow::Result<()> {
 fn respond_with_200_ok(stream: &mut TcpStream) -> anyhow::Result<()> {
     let response = "HTTP/1.1 200 OK\r\n\r\n";
     stream.write(response.as_bytes())?;
+    stream.flush()?;
+    anyhow::Ok(())
+}
+
+fn respond_with_text_content(stream: &mut TcpStream, text_content: &str) -> anyhow::Result<()> {
+    stream.write("HTTP/1.1 200 OK\r\n".as_bytes())?;
+    stream.write("Content-Type: text/plain\r\n".as_bytes())?;
+    stream.write(format!("Content-Length: {}\r\n\r\n", text_content.len()).as_bytes())?;
+    stream.write(format!("{}", text_content).as_bytes())?;
     stream.flush()?;
     anyhow::Ok(())
 }
