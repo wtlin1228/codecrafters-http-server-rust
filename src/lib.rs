@@ -1,3 +1,5 @@
+pub mod request;
+
 use std::{
     sync::{mpsc, Arc, Mutex},
     thread,
