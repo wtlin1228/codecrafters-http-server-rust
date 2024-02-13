@@ -1,18 +1,21 @@
+use anyhow::Context;
+use http_server_starter_rust::ThreadPool;
 use std::{
     io::{BufRead, BufReader, Write},
     net::{TcpListener, TcpStream},
 };
 
-use anyhow::Context;
-
 fn main() -> anyhow::Result<()> {
     let listener = TcpListener::bind("127.0.0.1:4221").unwrap();
+    let pool = ThreadPool::new(4);
 
     for stream in listener.incoming() {
         match stream {
-            Ok(stream) => {
-                handle_connection(stream)?;
-            }
+            Ok(stream) => pool.execute(|| {
+                if handle_connection(stream).is_err() {
+                    println!("fail to handle this connection");
+                };
+            }),
             Err(e) => {
                 println!("error: {}", e);
             }
@@ -25,6 +28,7 @@ fn main() -> anyhow::Result<()> {
 fn handle_connection(mut stream: TcpStream) -> anyhow::Result<()> {
     let mut reader = BufReader::new(&stream);
     let request = HttpRequest::new(&mut reader).context("parse HTTP request")?;
+
     match &request.path[..] {
         "/" => respond_with_200_ok(&mut stream)?,
         s if s.starts_with("/echo/") => {
@@ -92,15 +96,20 @@ impl HttpRequest {
             .context("get HTTP version")?
             .to_string();
 
-        // Host: localhost:4221
-        let line = lines_iter.next().context("read 2nd line")?;
-        let mut splitted_line = line.split(' ');
-        request.host = splitted_line.nth(1).context("get host")?.to_string();
-
-        // User-Agent: curl/7.64.1
-        let line = lines_iter.next().context("read 3rd line")?;
-        let mut splitted_line = line.split(' ');
-        request.user_agent = splitted_line.nth(1).context("get user agent")?.to_string();
+        for line in lines_iter {
+            match &line[..] {
+                l if l.is_empty() => break,
+                l if l.starts_with("Host: ") => {
+                    request.host = line["Host: ".len()..].to_string();
+                }
+                l if l.starts_with("User-Agent: ") => {
+                    request.user_agent = line["User-Agent: ".len()..].to_string();
+                }
+                _ => {
+                    println!("unhandled request line: {:?}", line);
+                }
+            }
+        }
 
         Ok(request)
     }
