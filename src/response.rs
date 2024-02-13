@@ -16,6 +16,15 @@ pub fn respond_with_text_content(stream: &mut TcpStream, text_content: &str) -> 
     anyhow::Ok(())
 }
 
+pub fn respond_with_octet_stream(stream: &mut TcpStream, file: &[u8]) -> anyhow::Result<()> {
+    stream.write("HTTP/1.1 200 OK\r\n".as_bytes())?;
+    stream.write("Content-Type: application/octet-stream\r\n".as_bytes())?;
+    stream.write(format!("Content-Length: {}\r\n\r\n", file.len()).as_bytes())?;
+    stream.write(file)?;
+    stream.flush()?;
+    anyhow::Ok(())
+}
+
 pub fn respond_with_404_not_found(stream: &mut TcpStream) -> anyhow::Result<()> {
     let response = "HTTP/1.1 404 Not Found\r\n\r\n";
     stream.write(response.as_bytes())?;
