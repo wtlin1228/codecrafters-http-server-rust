@@ -10,27 +10,33 @@ fn main() -> anyhow::Result<()> {
 
     for stream in listener.incoming() {
         match stream {
-            Ok(mut stream) => {
-                let mut reader = BufReader::new(&stream);
-                let request = HttpRequest::new(&mut reader).context("parse HTTP request")?;
-                match &request.path[..] {
-                    "/" => respond_with_200_ok(&mut stream)?,
-                    s if s.starts_with("/echo/") => {
-                        let random_string = &s["/echo/".len()..];
-                        respond_with_text_content(&mut stream, random_string)
-                            .context("echo with input string")?;
-                    }
-                    s if s.starts_with("/user-agent") => {
-                        respond_with_text_content(&mut stream, &request.user_agent)
-                            .context("respond with user agent")?;
-                    }
-                    _ => respond_with_404_not_found(&mut stream)?,
-                }
+            Ok(stream) => {
+                handle_connection(stream)?;
             }
             Err(e) => {
                 println!("error: {}", e);
             }
         }
+    }
+
+    anyhow::Ok(())
+}
+
+fn handle_connection(mut stream: TcpStream) -> anyhow::Result<()> {
+    let mut reader = BufReader::new(&stream);
+    let request = HttpRequest::new(&mut reader).context("parse HTTP request")?;
+    match &request.path[..] {
+        "/" => respond_with_200_ok(&mut stream)?,
+        s if s.starts_with("/echo/") => {
+            let random_string = &s["/echo/".len()..];
+            respond_with_text_content(&mut stream, random_string)
+                .context("echo with input string")?;
+        }
+        s if s.starts_with("/user-agent") => {
+            respond_with_text_content(&mut stream, &request.user_agent)
+                .context("respond with user agent")?;
+        }
+        _ => respond_with_404_not_found(&mut stream)?,
     }
 
     anyhow::Ok(())
