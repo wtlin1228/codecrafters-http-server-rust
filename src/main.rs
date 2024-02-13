@@ -5,7 +5,7 @@ use std::{
 };
 
 use http_server_starter_rust::request::HttpRequest;
-use http_server_starter_rust::ThreadPool;
+use http_server_starter_rust::thread_pool::ThreadPool;
 
 fn main() -> anyhow::Result<()> {
     let listener = TcpListener::bind("127.0.0.1:4221").unwrap();
