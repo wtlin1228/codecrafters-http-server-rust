@@ -63,12 +63,26 @@ fn handle_connection(
             let mut path = PathBuf::new();
             path.push(served_directory);
             path.push(filename);
-            if let Ok(file) = fs::read(path.as_path()) {
-                response::respond_with_octet_stream(&mut stream, &file)
-                    .context("respond with file")?;
-            } else {
-                response::respond_with_404_not_found(&mut stream)?
-            };
+            let path = path.as_path();
+
+            match &request.http_method[..] {
+                "GET" => {
+                    if let Ok(file) = fs::read(path) {
+                        response::respond_with_octet_stream(&mut stream, &file)
+                            .context("respond with file")?;
+                    } else {
+                        response::respond_with_404_not_found(&mut stream)?;
+                    };
+                }
+                "POST" => {
+                    if let Ok(_) = fs::write(path, request.body) {
+                        response::respond_with_201_created(&mut stream)?;
+                    } else {
+                        response::respond_with_404_not_found(&mut stream)?;
+                    }
+                }
+                _ => response::respond_with_404_not_found(&mut stream)?,
+            }
         }
         _ => response::respond_with_404_not_found(&mut stream)?,
     }

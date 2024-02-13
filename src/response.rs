@@ -25,6 +25,13 @@ pub fn respond_with_octet_stream(stream: &mut TcpStream, file: &[u8]) -> anyhow:
     anyhow::Ok(())
 }
 
+pub fn respond_with_201_created(stream: &mut TcpStream) -> anyhow::Result<()> {
+    let response = "HTTP/1.1 201 Created\r\n\r\n";
+    stream.write(response.as_bytes())?;
+    stream.flush()?;
+    anyhow::Ok(())
+}
+
 pub fn respond_with_404_not_found(stream: &mut TcpStream) -> anyhow::Result<()> {
     let response = "HTTP/1.1 404 Not Found\r\n\r\n";
     stream.write(response.as_bytes())?;
